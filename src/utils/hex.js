@@ -6,8 +6,6 @@ function asciiToHex(ascii){
         if(hex[i].length < 2){
             hex[i] = '0' + hex[i]
         }
-        console.log("Hex: ", hex[i])
-        console.log(ascii[i])
     }
     return hex.join(" ")
 }

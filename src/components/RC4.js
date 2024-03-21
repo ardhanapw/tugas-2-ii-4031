@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { asciiToHex } from "../utils/hex";
 
-function AffineCipher(){
+function RC4(){
     const [plaintext, setPlainText] = useState("")
     const [ciphertext, setCipherText] = useState("")
     const [mode, setMode] = useState("encrypt") //encrypt mode true
@@ -15,7 +15,9 @@ function AffineCipher(){
     }
 
     const decreaseSlope = () => {
-        setSlope(slope - 2)
+        if(slope > 1){
+            setSlope(slope - 2)
+        }
     }
 
     const increaseIntercept = () => {
@@ -23,19 +25,19 @@ function AffineCipher(){
     }
 
     const decreaseIntercept = () => {
-        setIntercept(intercept - 1)
+        if(intercept > 1){
+            setIntercept(intercept - 1)
+        }
     }
 
     const handleMode = (event) => {
         setMode(event.target.value)
     }
 
-    function decryptKSA(key, slope, intercept){
+    function KSA(key){
         let larik = []
         let K = []
-        //let result = []
         let j = 0
-        let x = 0 // x * slope === 1 (mod 256)
     
         for(let i = 0; i < 256; i++){
             larik[i] = i
@@ -51,61 +53,14 @@ function AffineCipher(){
             let temp = larik[j]
             larik[j] = larik[i]
             larik[i] = temp
-        }
+    
 
-        while((slope * x % 256)!== 1){
-            x += 1
         }
-        console.log("relatif prima: ", x)
-        for(let i = 0; i < larik.length;i++){
-            //const c = ciphertext.charCodeAt(i) - 65 //ascii to alphabet
-            larik[i] =   (x * (larik[i]-intercept) ) % 256 >= 0 ? 
-                        (x * (larik[i]-intercept) + intercept) % 256 : 
-                        ((x * (larik[i]-intercept) + 256 + intercept) % 256) //+256 untuk menghilangkan modulo negatif
- 
-        }
-
-        /*
+        //extended vigenere
         for(let i = 0; i < 256; i++){
-            larik[i] = (slope * larik[i] + intercept)%256
+            larik[i] = (larik[i] + K[i%K.length])%256
         }
         
-       */
-        console.log("elemen larik di decryptKSA:", larik)
-        return larik
-    }
-
-    function KSA(key, slope, intercept){
-        let larik = []
-        let K = []
-        let j = 0
-    
-        for(let i = 0; i < 256; i++){
-            larik[i] = i
-        }
-    
-        for(let i = 0; i < key.length; i++){
-            K[i] = key.charCodeAt(i)
-        }
-        //console.log(K)
-    
-        for(let i = 0; i < 256; i++){
-            j = (j + larik[i] + K[i%K.length]) % 256
-            //swap
-            let temp = larik[j]
-            larik[j] = larik[i]
-            larik[i] = temp
-    
-
-        }
-        /*
-        console.log("elemen larik sebelum affine:", larik)
-        for(let i = 0; i < 256; i++){
-            //console.log("affine: ", larik[i], slope, intercept)
-            larik[i] = (slope * larik[i] + intercept)%256
-        }
-        console.log("elemen larik setelah affine:", larik)
-       */
         return larik
     }
     
@@ -126,7 +81,6 @@ function AffineCipher(){
     
             t = (larik[i] + larik[j]) % 256
             u[idx] = larik[t]
-            //c[i] = u ^ plaintext.charCodeAt(idx)
         }
     
         return u
@@ -136,28 +90,16 @@ function AffineCipher(){
         let c = []
         let keystream
         
-        keystream = PRGA(plaintext, KSA(key, slope, intercept))
-        /*
+        keystream = PRGA(plaintext, KSA(key))
         for(let i = 0; i < plaintext.length; i++){
             c[i] = keystream[i] ^ plaintext.charCodeAt(i)
-            c[i] = String.fromCharCode(c[i])
-            keystream[i] = String.fromCharCode(keystream[i])
-        }
-        */
-        for(let i = 0; i < plaintext.length; i++){
-            c[i] = keystream[i] ^ plaintext.charCodeAt(i)
-            console.log("di encrypt sebelum affine", c[i])
+
             //affine
             c[i] = (slope * c[i] + intercept)%256
-            console.log("di encrypt sesudah affine", c[i])
-            //vigenere??
 
             c[i] = String.fromCharCode(c[i])
             keystream[i] = String.fromCharCode(keystream[i])
         }
-
-        console.log("Cipher: ", c)
-        //console.log("Encrypt RC4: ", KSA(key))
     
         return {c: c, keystream: keystream}
     }
@@ -167,13 +109,11 @@ function AffineCipher(){
         let keystream
         let x = 0
     
-        keystream = PRGA(ciphertext, KSA(key, slope, intercept))
-        //p = keystream ^ ciphertext
-        while((slope * x % 256)!== 1){
+        keystream = PRGA(ciphertext, KSA(key))
+
+        while((slope * x % 256)!== 1){//x relatif prima
             x += 1
         }
-
-
 
         for(let i = 0; i < ciphertext.length; i++){
             const c = ciphertext.charCodeAt(i)
@@ -181,17 +121,12 @@ function AffineCipher(){
             
             p[i] = (x * (c-intercept) ) % 256 >= 0 ? 
                     (x * (c-intercept) ) % 256 : 
-                    ((x * (c-intercept) + 256 ) % 256) //+26 untuk menghilangkan modulo negatif
+                    ((x * (c-intercept) + 256 ) % 256) //+256 untuk menghilangkan modulo negatif
             
-            console.log("di decrypt sebelum xor", p[i])
             p[i] = p[i] ^ keystream[i]
-            //p[i] = (((c-intercept)/slope)) ^ keystream[i]
-            console.log("di decrypt setelah xor", p[i])
             p[i] = String.fromCharCode(p[i])
             keystream[i] = String.fromCharCode(keystream[i])
         }
-        console.log("Keystream di decrypt: ", keystream)
-        console.log("plaintext: ", p)
         return {p: p, keystream: keystream}
     }
 
@@ -289,4 +224,4 @@ function AffineCipher(){
     )
 }
 
-export default AffineCipher;
+export default RC4;
