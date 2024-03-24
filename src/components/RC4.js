@@ -1,11 +1,16 @@
 import { useState } from "react";
 import { asciiToHex } from "../utils/hex";
+import axios from "axios";
 
 function RC4(){
     const [plaintext, setPlainText] = useState("")
     const [ciphertext, setCipherText] = useState("")
     const [mode, setMode] = useState("encrypt") //encrypt mode true
     const [key, setKey] = useState("")
+    const [inputType, setInputType] = useState("text") //default input type is text
+
+    const [file, setFile] = useState()
+    const [fetchStatus, setFetchStatus] = useState(true)
 
     let [slope, setSlope] = useState(1)  
     let [intercept, setIntercept] = useState(1) 
@@ -34,6 +39,22 @@ function RC4(){
         setMode(event.target.value)
     }
 
+    const handleFile = (event) => {
+        console.log(event.target.files)
+        setFile(event.target.files[0])
+    }
+
+    //create data
+    const upload = () => {
+        const formData = new FormData()
+        formData.append('file', file)
+        axios.post('url', formData)
+        .then((res) => {
+            console.log(res)
+            setFetchStatus(true)
+        })
+    }
+
     function KSA(key){
         let larik = []
         let K = []
@@ -42,11 +63,11 @@ function RC4(){
         for(let i = 0; i < 256; i++){
             larik[i] = i
         }
-    
+        
         for(let i = 0; i < key.length; i++){
             K[i] = key.charCodeAt(i)
         }
-    
+
         for(let i = 0; i < 256; i++){
             j = (j + larik[i] + K[i%K.length]) % 256
             //swap
@@ -56,6 +77,7 @@ function RC4(){
     
 
         }
+
         //extended vigenere
         for(let i = 0; i < 256; i++){
             larik[i] = (larik[i] + K[i%K.length])%256
@@ -95,7 +117,7 @@ function RC4(){
             c[i] = keystream[i] ^ plaintext.charCodeAt(i)
 
             //affine
-            c[i] = (slope * c[i] + intercept)%256
+            c[i] = (slope * c[i] + intercept)
 
             c[i] = String.fromCharCode(c[i])
             keystream[i] = String.fromCharCode(keystream[i])
@@ -152,12 +174,22 @@ function RC4(){
                 </div>
             </div>
 
+            <div class="mb-5">
+                <h1 class = "mb-1">
+                    <b>Input Type</b>
+                </h1>
+                <div class="flex gap-3">
+                    <input type = "radio" name= "inputType" value = "text" onChange={(e) => setInputType(e.target.value)}/> Text
+                    <input type = "radio" name= "inputType" value = "file" onChange={(e) => setInputType(e.target.value)}/> File
+                </div>
+            </div>
+
             <div class="flex my-5">
                 <div class = "mr-4">
                     <h1>
                     <b>Slope</b>
                     </h1>
-                    <div  class="py-2 px-3 inline-block bg-white border border-gray-200 rounded-lg dark:bg-slate-900 dark:border-gray-700">
+                    <div class="py-2 px-3 inline-block bg-white border border-gray-200 rounded-lg dark:bg-slate-900 dark:border-gray-700">
                         <div class="flex items-center gap-x-1.5">
                             <button type="button" onClick={decreaseSlope} class="size-6 inline-flex justify-center items-center gap-x-2 text-sm font-medium rounded-md border border-gray-200 bg-white text-gray-800 shadow-sm hover:bg-gray-50 disabled:opacity-50 disabled:pointer-events-none dark:bg-slate-900 dark:border-gray-700 dark:text-white dark:hover:bg-gray-800 dark:focus:outline-none dark:focus:ring-1 dark:focus:ring-gray-600">
                                 <svg class="flex-shrink-0 size-3.5" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M5 12h14"/></svg>
@@ -189,6 +221,8 @@ function RC4(){
 
             {(mode == "encrypt") && (
                 <div class = "my-5">
+                    {(inputType == "text") && (
+                    <>
                     <h1>
                     <b>Plaintext</b>
                     </h1>
@@ -201,6 +235,22 @@ function RC4(){
                     </div>
                     <br/><b>Result: {rc4CipherText}</b><br/>
                     <b>Result as Hex: {asciiToHex(rc4CipherText)}</b><br/>
+                    </>
+                    )}
+                    {(inputType == "file") && (
+                    <>
+                    <h1>
+                    <b>File</b>
+                    </h1>
+                    <form action = "" method = "post" enctype="multipart/form-data">
+                        <input type = "file" name = "file" onChange={handleFile}/>
+                        <button type = "button" onClick={upload}>
+                                Submit
+                        </button>
+                    </form>
+                    </>
+                    )}
+
                 </div>
             )}
 
