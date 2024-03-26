@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect} from "react";
 import { asciiToHex } from "../utils/hex";
 import axios from "axios";
 
@@ -11,6 +11,8 @@ function RC4(){
 
     const [file, setFile] = useState()
     const [fetchStatus, setFetchStatus] = useState(true)
+    const [uploadedFile, setUploadedFile] = useState();
+    const [error, setError] = useState();
 
     let [slope, setSlope] = useState(1)  
     let [intercept, setIntercept] = useState(1) 
@@ -45,14 +47,16 @@ function RC4(){
     }
 
     //create data
-    const upload = () => {
+    const upload = (event) => {
         const formData = new FormData()
         formData.append('file', file)
-        axios.post('url', formData)
+        console.log(formData)
+        axios.post('http://localhost:5000/upload', formData)
         .then((res) => {
             console.log(res)
             setFetchStatus(true)
         })
+
     }
 
     function KSA(key){
@@ -80,7 +84,7 @@ function RC4(){
 
         //extended vigenere
         for(let i = 0; i < 256; i++){
-            larik[i] = (larik[i] + K[i%K.length])%256
+            larik[i] = (larik[i] + K[i%K.length])
         }
         
         return larik
@@ -133,22 +137,27 @@ function RC4(){
     
         keystream = PRGA(ciphertext, KSA(key))
 
+        /*
         while((slope * x % 256)!== 1){//x relatif prima
             x += 1
         }
-
+        */
         for(let i = 0; i < ciphertext.length; i++){
             const c = ciphertext.charCodeAt(i)
             //reversing the affine
+
+            p[i] = (c-intercept)/slope
             
+            /*
             p[i] = (x * (c-intercept) ) % 256 >= 0 ? 
                     (x * (c-intercept) ) % 256 : 
-                    ((x * (c-intercept) + 256 ) % 256) //+256 untuk menghilangkan modulo negatif
-            
+                    ((x * (c-intercept) ) % 256) //+256 untuk menghilangkan modulo negatif
+            */
             p[i] = p[i] ^ keystream[i]
             p[i] = String.fromCharCode(p[i])
             keystream[i] = String.fromCharCode(keystream[i])
         }
+        
         return {p: p, keystream: keystream}
     }
 
@@ -242,7 +251,7 @@ function RC4(){
                     <h1>
                     <b>File</b>
                     </h1>
-                    <form action = "" method = "post" enctype="multipart/form-data">
+                    <form action = "/upload" method = "post" enctype="multipart/form-data">
                         <input type = "file" name = "file" onChange={handleFile}/>
                         <button type = "button" onClick={upload}>
                                 Submit
