@@ -51,7 +51,7 @@ function RC4(){
         const formData = new FormData()
         formData.append('file', file)
         console.log(formData)
-        axios.post('http://localhost:5000/upload', formData)
+        axios.post('https://modified-rc4-server.vercel.app:5000/upload', formData)
         .then((res) => {
             console.log(res)
             setFetchStatus(true)
