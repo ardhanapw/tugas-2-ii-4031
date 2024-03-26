@@ -1,7 +1,7 @@
 const express = require('express')
 const path = require('path')
 const multer  = require('multer')
-const upload = multer({ dest: 'uploads/' })
+const upload = multer()
 
 const app = express()
 
