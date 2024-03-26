@@ -3,14 +3,14 @@ const multer  = require('multer')
 const upload = multer({ dest: 'uploads/' })
 
 const app = express()
+/*
 const cors = require('cors');
 // Allow all origins
 app.use(cors());
+let count = 15;
+*/
 
 const port = 5000
-
-let count = 15;
-
 app.get('/', function (req, res) {
   // req.file is the `avatar` file
   // req.body will hold the text fields, if there were any
