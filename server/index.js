@@ -11,6 +11,12 @@ const port = 5000
 
 let count = 15;
 
+app.use('/', function (req, res) {
+  // req.file is the `avatar` file
+  // req.body will hold the text fields, if there were any
+  res.send("Server menyala")
+})
+
 app.get('/api', function (req, res) {
     // req.file is the `avatar` file
     // req.body will hold the text fields, if there were any
