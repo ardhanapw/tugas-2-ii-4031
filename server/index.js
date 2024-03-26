@@ -12,6 +12,8 @@ let count = 15;
 
 
 const port = 5000
+
+const { url } = await put('articles/blob.txt', 'Hello World!', { access: 'public' });
 app.use('/', function (req, res) {
   // req.file is the `avatar` file
   // req.body will hold the text fields, if there were any
