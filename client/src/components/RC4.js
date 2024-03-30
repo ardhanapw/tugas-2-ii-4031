@@ -1,5 +1,4 @@
-import { useState, useEffect} from "react";
-import { asciiToHex } from "../utils/hex";
+import { useState } from "react";
 import axios from "axios";
 
 function RC4(){
@@ -10,9 +9,8 @@ function RC4(){
     const [inputType, setInputType] = useState("text") //default input type is text
 
     const [file, setFile] = useState()
+    const [fileStream, setFileStream] = useState("")
     const [fetchStatus, setFetchStatus] = useState(true)
-    const [uploadedFile, setUploadedFile] = useState();
-    const [error, setError] = useState();
 
     let [slope, setSlope] = useState(1)  
     let [intercept, setIntercept] = useState(1) 
@@ -42,22 +40,46 @@ function RC4(){
     }
 
     const handleFile = (event) => {
-        console.log(event.target.files)
         setFile(event.target.files[0])
     }
 
-    //create data
-    const upload = (event) => {
+    const toFile = (event) => {
+        let processedFileStream = mode === "encrypt" ?  encrypt(fileStream, key, slope, intercept, inputType) : 
+                                                        decrypt(fileStream, key, slope, intercept, inputType)
         const formData = new FormData()
-        formData.append('file', file)
-        console.log(formData)
-        axios.post('https://modified-rc4-server.vercel.app:5000/upload', formData)
+        formData.append('data', file.name) //nama file dan extension
+        formData.append('data', processedFileStream) //hasil encrypt/decrypt
+        formData.append('data', mode) //penamaan file berdasarkan mode yang dipilih
+        
+        axios.post('http://localhost:5000/tofile', formData)
         .then((res) => {
             console.log(res)
+            setFileStream(res.data)
             setFetchStatus(true)
         })
-
     }
+    
+    const upload = (event) => {
+        const formData = new FormData()
+        formData.append('file', file)   
+
+        axios.post('http://localhost:5000/upload', formData)
+        .then((res) => {
+            console.log(res)
+            setFileStream(res.data)
+            setFetchStatus(true)
+        })
+        .catch(function (error){
+            if(error.response){
+                console.log(error.message)
+            }
+        })  
+    } 
+
+    const submitFile = (event) => {
+        upload(event) // upload file yang dipilih ke direktori uploads
+        toFile(event) // membuat file berisi hasil encrypt/decrypt dari file
+    } 
 
     function KSA(key){
         let larik = []
@@ -112,57 +134,61 @@ function RC4(){
         return u
     }
     
-    function encrypt(plaintext, key, slope, intercept){
+    function encrypt(plaintext, key, slope, intercept, inputType){
         let c = []
         let keystream
-        
+
         keystream = PRGA(plaintext, KSA(key))
-        for(let i = 0; i < plaintext.length; i++){
-            c[i] = keystream[i] ^ plaintext.charCodeAt(i)
 
-            //affine
-            c[i] = (slope * c[i] + intercept)
-
-            c[i] = String.fromCharCode(c[i])
-            keystream[i] = String.fromCharCode(keystream[i])
-        }
+        if(inputType === "file"){
+            for(let i = 0; i < plaintext.length; i++){
+                c[i] = keystream[i] ^ plaintext.charCodeAt(i)
     
-        return {c: c, keystream: keystream}
+                //affine
+                c[i] = (slope * c[i] + intercept)
+            }
+        }
+        else if(inputType === "text"){
+            for(let i = 0; i < plaintext.length; i++){
+                c[i] = keystream[i] ^ plaintext.charCodeAt(i)
+    
+                //affine
+                c[i] = (slope * c[i] + intercept)
+                c[i] = String.fromCharCode(c[i])
+            } 
+        }
+        return c
     }
     
-    function decrypt(ciphertext, key, slope, intercept){
+    function decrypt(ciphertext, key, slope, intercept, inputType){
         let p = []
+        let c = []
         let keystream
-        let x = 0
-    
+
         keystream = PRGA(ciphertext, KSA(key))
 
-        /*
-        while((slope * x % 256)!== 1){//x relatif prima
-            x += 1
-        }
-        */
-        for(let i = 0; i < ciphertext.length; i++){
-            const c = ciphertext.charCodeAt(i)
-            //reversing the affine
+        if(inputType === "file"){
+            c = ciphertext.split(",")    
+            for(let i = 0; i < c.length; i++){
+                //reversing the affine
+                p[i] = (c[i]-intercept)/slope
+                p[i] = p[i] ^ keystream[i]
+            }
+        } else if(inputType === "text"){
+            for(let i = 0; i < ciphertext.length; i++){
+                c[i] = ciphertext.charCodeAt(i)
 
-            p[i] = (c-intercept)/slope
-            
-            /*
-            p[i] = (x * (c-intercept) ) % 256 >= 0 ? 
-                    (x * (c-intercept) ) % 256 : 
-                    ((x * (c-intercept) ) % 256) //+256 untuk menghilangkan modulo negatif
-            */
-            p[i] = p[i] ^ keystream[i]
-            p[i] = String.fromCharCode(p[i])
-            keystream[i] = String.fromCharCode(keystream[i])
+                //reversing the affine
+                p[i] = (c[i]-intercept)/slope
+                p[i] = p[i] ^ keystream[i]
+                p[i] = String.fromCharCode(p[i])
+            }
         }
-        
-        return {p: p, keystream: keystream}
+        return p
     }
 
-    let rc4CipherText = encrypt(plaintext, key, slope, intercept).c
-    let rc4PlainText = decrypt(ciphertext, key, slope, intercept).p
+    let rc4CipherText = encrypt(plaintext, key, slope, intercept, inputType)
+    let rc4PlainText = decrypt(ciphertext, key, slope, intercept, inputType)
 
     return (
         <div class="container">
@@ -243,7 +269,6 @@ function RC4(){
                         <textarea class="w-1/2 border border-gray-300" value = {key} onChange={(e) => setKey(e.target.value)} maxLength="256" rows = "2" placeholder="Your key here.."/>
                     </div>
                     <br/><b>Result: {rc4CipherText}</b><br/>
-                    <b>Result as Hex: {asciiToHex(rc4CipherText)}</b><br/>
                     </>
                     )}
                     {(inputType == "file") && (
@@ -251,32 +276,55 @@ function RC4(){
                     <h1>
                     <b>File</b>
                     </h1>
-                    <form action = "/upload" method = "post" enctype="multipart/form-data">
-                        <input type = "file" name = "file" onChange={handleFile}/>
-                        <button type = "button" onClick={upload}>
+                        <input type = "file" name = "file" onChange = {(e) => handleFile(e)}/>
+                        <div class = "my-2">
+                            <h1>
+                            <b>Key</b>
+                            </h1>
+                            <textarea class="w-1/2 border border-gray-300" value = {key} onChange={(e) => setKey(e.target.value)} maxLength="256" rows = "2" placeholder="Your key here.."/>
+                        </div>
+                        <button type = "button" class = "bg-blue-500 text-white font-bold my-2 py-2 px-2" onClick={(e) => submitFile(e)}>
                                 Submit
                         </button>
-                    </form>
                     </>
                     )}
-
                 </div>
             )}
 
             {(mode == "decrypt") && (
                 <div class = "my-5">
-                    <h1>
-                    <b>Ciphertext</b>
-                    </h1>
-                    <textarea class="w-1/2 border border-gray-300 my-1" value = {ciphertext} onChange={(e) => setCipherText(e.target.value)} rows = "5" placeholder="Your text here.."/>
-                    <div>
+                    {(inputType == "text") && (
+                    <>
                         <h1>
-                        <b>Key</b>
+                        <b>Ciphertext</b>
                         </h1>
-                        <textarea class="w-1/2 border border-gray-300" value = {key} onChange={(e) => setKey(e.target.value)} maxLength="256" rows = "2" placeholder="Your key here.."/>
-                    </div>
-                    <br/><b>Result: {decrypt(ciphertext, key, slope, intercept).p}</b><br/>
-                    <b>Result as Hex: {asciiToHex(rc4PlainText)}</b><br/>
+                        <textarea class="w-1/2 border border-gray-300 my-1" value = {ciphertext} onChange={(e) => setCipherText(e.target.value)} rows = "5" placeholder="Your text here.."/>
+                        <div>
+                            <h1>
+                            <b>Key</b>
+                            </h1>
+                            <textarea class="w-1/2 border border-gray-300" value = {key} onChange={(e) => setKey(e.target.value)} maxLength="256" rows = "2" placeholder="Your key here.."/>
+                        </div>
+                        <br/><b>Result: {rc4PlainText}</b><br/>
+                    </>
+                    )}
+                    {(inputType == "file") && (
+                    <>
+                    <h1>
+                    <b>File</b>
+                    </h1>
+                        <input type = "file" name = "file" onChange = {(e) => handleFile(e)}/>
+                        <div class = "my-2">
+                            <h1>
+                            <b>Key</b>
+                            </h1>
+                            <textarea class="w-1/2 border border-gray-300" value = {key} onChange={(e) => setKey(e.target.value)} maxLength="256" rows = "2" placeholder="Your key here.."/>
+                        </div>
+                        <button type = "button" class = "bg-blue-500 text-white font-bold my-2 py-2 px-2" onClick={(e) => submitFile(e)}>
+                                Submit
+                        </button>
+                    </>
+                    )}
                 </div>
             )}
         </div>
