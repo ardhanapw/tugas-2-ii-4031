@@ -1,8 +1,10 @@
-function asciiToHex(ascii){
+function toHex(number){
     let hex = []
+    for(let i = 0; i < number.length; i++){
+        hex[i] = number[i].charCodeAt(0)
+        
+        hex[i] = hex[i].toString(16)
 
-    for(let i = 0; i < ascii.length; i++){
-        hex[i] = ascii[i].charCodeAt(0).toString(16)
         if(hex[i].length < 2){
             hex[i] = '0' + hex[i]
         }
@@ -10,4 +12,4 @@ function asciiToHex(ascii){
     return hex.join(" ")
 }
 
-export {asciiToHex}
+export {toHex}

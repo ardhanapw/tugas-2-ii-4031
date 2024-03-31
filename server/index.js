@@ -50,8 +50,6 @@ app.post('/tofile', upload.single('file'), function (req, res, next){
       }
     })
   }
-
-
 })
 
 app.post('/upload', upload.single('file') ,function (req, res, next) {

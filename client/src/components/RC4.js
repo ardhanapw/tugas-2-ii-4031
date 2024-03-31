@@ -1,5 +1,6 @@
 import { useState } from "react";
 import axios from "axios";
+import { toHex } from "../utils/hex";
 
 function RC4(){
     const [plaintext, setPlainText] = useState("")
@@ -100,8 +101,6 @@ function RC4(){
             let temp = larik[j]
             larik[j] = larik[i]
             larik[i] = temp
-    
-
         }
 
         //extended vigenere
@@ -268,7 +267,8 @@ function RC4(){
                         </h1>
                         <textarea class="w-1/2 border border-gray-300" value = {key} onChange={(e) => setKey(e.target.value)} maxLength="256" rows = "2" placeholder="Your key here.."/>
                     </div>
-                    <br/><b>Result: {rc4CipherText}</b><br/>
+                    <br/><b>Result: {rc4CipherText}</b>
+                    <br/><b>Result in hex: {toHex(rc4CipherText)}</b>
                     </>
                     )}
                     {(inputType == "file") && (
@@ -305,7 +305,8 @@ function RC4(){
                             </h1>
                             <textarea class="w-1/2 border border-gray-300" value = {key} onChange={(e) => setKey(e.target.value)} maxLength="256" rows = "2" placeholder="Your key here.."/>
                         </div>
-                        <br/><b>Result: {rc4PlainText}</b><br/>
+                        <br/><b>Result: {rc4PlainText}</b>
+                        <br/><b>Result in hex: {toHex(rc4PlainText)}</b>
                     </>
                     )}
                     {(inputType == "file") && (
